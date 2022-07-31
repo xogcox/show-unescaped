@@ -4,11 +4,19 @@ module Unescaped
     , unescapeUnicode
     ) where
 
-import Data.Char (ord, chr, isPrint, isDigit)
-import Data.List.NonEmpty (NonEmpty(..), nonEmpty)
-import Data.Maybe (listToMaybe)
-import Numeric (readDec)
+import Data.Char (ord, chr, isPrint, isDigit, isHexDigit)
+import Data.List (foldr1, stripPrefix)
+import Data.Maybe (listToMaybe, fromMaybe)
+import Numeric (readDec, showHex)
 import System.IO (putStrLn)
+
+data ParseResult
+    = PassThrough
+    | AsChar Char String
+    | AsCode String String
+    deriving (Eq, Show)
+
+type EscapingPolicy = Char -> String -> ParseResult
 
 printUnescaped :: Show a => a -> IO ()
 printUnescaped = putStrLn . showUnescaped
@@ -17,19 +25,26 @@ showUnescaped :: Show a => a -> String
 showUnescaped = unescapeUnicode . show
 
 unescapeUnicode :: String -> String
-unescapeUnicode "" = ""
-unescapeUnicode (c:s) =
+unescapeUnicode = unescapeUnicodeGeneral decPrintable
+
+unescapeUnicodeGeneral :: EscapingPolicy -> String -> String
+unescapeUnicodeGeneral _ "" = ""
+unescapeUnicodeGeneral convert (c:s) =
     case c of
         '\\' -> escapeCode s
-        _ -> c : unescapeUnicode s
-    where escapeCode [] = "\\" -- A final backslash is an illegal escape sequence.
+        _ -> c : recurse s
+    where recurse = unescapeUnicodeGeneral convert
+          escapeCode [] = "\\" -- A final backslash is an illegal escape sequence.
                                -- However, pass it through instead of doing validation.
           escapeCode cs@(c:s) =
-              case parseDec cs of
-                  Nothing       -> '\\' : c : unescapeUnicode s
-                  Just (c', '\\' : '&' : suffix)
-                                -> c' : unescapeUnicode suffix
-                  Just (c', s') -> c' : unescapeUnicode s'
+              case selectOutput (parseDec cs) of
+                  PassThrough  -> '\\' : c : recurse s
+                  AsChar c' s' -> c' : recurse (removeEscape s')
+                  AsCode x s   -> x ++ recurse s
+              where removeEscape s = fromMaybe s . stripPrefix "\\&" $ s
+                    selectOutput p = case p of
+                        Nothing -> PassThrough
+                        Just (c, s) -> convert c s
           parseDec :: String -> Maybe (Char, String)
           parseDec s
               | tooManyDigits s = Nothing
@@ -43,7 +58,24 @@ unescapeUnicode (c:s) =
                     verifyCharInRange :: (Int, String) -> Maybe (Char, String)
                     verifyCharInRange (i, s)
                         | i > maxOrd        = Nothing
-                        | not . isPrint $ c = Nothing
                         | otherwise         = Just (c, s)
                         where c = chr i
 
+decToHex :: EscapingPolicy
+decToHex c s = AsCode (toHexCode c s) s
+
+decPrintable :: EscapingPolicy
+decPrintable c s =
+    if isPrint c then AsChar c s else PassThrough
+
+hexPrintable :: EscapingPolicy
+hexPrintable c s =
+    if isPrint c
+        then AsChar c s
+        else AsCode (toHexCode c s) s
+
+toHexCode :: Char -> String -> String
+toHexCode c s =
+    if needsEscape then hx ++ "\\&" else hx
+    where needsEscape = fromMaybe False $ isHexDigit <$> listToMaybe s
+          hx = "\\x" ++ showHex (ord c) ""
