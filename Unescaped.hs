@@ -78,15 +78,12 @@ hexPrintable c s =
 toHexCode :: Char -> String -> String
 toHexCode c s =
     if needsEscape then hx ++ "\\&" else hx
-    where needsEscape = fromMaybe False $ isHexDigit <$> listToMaybe s
+    where needsEscape = maybe False isHexDigit . listToMaybe $ s
           hx = "\\x" ++ showHex (ord c) ""
 
 unfoldString :: (NonEmpty Char -> (String, String)) -> String -> String
 unfoldString f s =
     concat . takeWhile (not . null) . map fst . tail . iterate go $ ("", s)
     where go :: (String, String) -> (String, String)
-          go (_, s) =
-              case nonEmpty s of
-                  Nothing -> ("", "")
-                  Just ne -> f ne
+          go (_, s) = maybe ("", "") f . nonEmpty $ s
 
