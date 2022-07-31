@@ -6,6 +6,7 @@ module Unescaped
 
 import Data.Char (ord, chr, isPrint, isDigit, isHexDigit)
 import Data.List (foldr1, stripPrefix)
+import Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import Data.Maybe (listToMaybe, fromMaybe)
 import Numeric (readDec, showHex)
 import System.IO (putStrLn)
@@ -28,19 +29,19 @@ unescapeUnicode :: String -> String
 unescapeUnicode = unescapeUnicodeGeneral decPrintable
 
 unescapeUnicodeGeneral :: EscapingPolicy -> String -> String
-unescapeUnicodeGeneral _ "" = ""
-unescapeUnicodeGeneral convert (c:s) =
-    case c of
-        '\\' -> escapeCode s
-        _ -> c : recurse s
-    where recurse = unescapeUnicodeGeneral convert
-          escapeCode [] = "\\" -- A final backslash is an illegal escape sequence.
-                               -- However, pass it through instead of doing validation.
+unescapeUnicodeGeneral convert s =
+    unfoldString go s
+    where go (c :| s) =
+              case c of
+                  '\\' -> escapeCode s
+                  _ -> ([c], s)
+          escapeCode [] = ("\\", "") -- A final backslash is an illegal escape sequence.
+                                     -- However, pass it through instead of doing validation.
           escapeCode cs@(c:s) =
               case selectOutput (parseDec cs) of
-                  PassThrough  -> '\\' : c : recurse s
-                  AsChar c' s' -> c' : recurse (removeEscape s')
-                  AsCode x s   -> x ++ recurse s
+                  PassThrough  -> (['\\', c], s)
+                  AsChar c' s' -> ([c'], removeEscape s')
+                  AsCode x s   -> (x, s)
               where removeEscape s = fromMaybe s . stripPrefix "\\&" $ s
                     selectOutput p = case p of
                         Nothing -> PassThrough
@@ -79,3 +80,13 @@ toHexCode c s =
     if needsEscape then hx ++ "\\&" else hx
     where needsEscape = fromMaybe False $ isHexDigit <$> listToMaybe s
           hx = "\\x" ++ showHex (ord c) ""
+
+unfoldString :: (NonEmpty Char -> (String, String)) -> String -> String
+unfoldString f s =
+    concat . takeWhile (not . null) . map fst . tail . iterate go $ ("", s)
+    where go :: (String, String) -> (String, String)
+          go (_, s) =
+              case nonEmpty s of
+                  Nothing -> ("", "")
+                  Just ne -> f ne
+
