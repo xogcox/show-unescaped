@@ -1,7 +1,13 @@
 module Unescaped
-    ( printUnescaped
-    , showUnescaped
-    , unescapeUnicode
+    ( printUnescapePrintable
+    , showUnescapePrintable
+    , unescapePrintable
+    , printWithHex
+    , showWithHex
+    , withHex
+    , printUnescapePrintableWithHex
+    , showUnescapePrintableWithHex
+    , unescapePrintableWithHex
     ) where
 
 import Data.Char (ord, chr, isPrint, isDigit, isHexDigit)
@@ -19,14 +25,45 @@ data ParseResult
 
 type EscapingPolicy = Char -> String -> ParseResult
 
-printUnescaped :: Show a => a -> IO ()
-printUnescaped = putStrLn . showUnescaped
+printUnescapePrintable :: Show a => a -> IO ()
+printUnescapePrintable = putStrLn . showUnescapePrintable
 
-showUnescaped :: Show a => a -> String
-showUnescaped = unescapeUnicode . show
+showUnescapePrintable :: Show a => a -> String
+showUnescapePrintable = unescapePrintable . show
 
-unescapeUnicode :: String -> String
-unescapeUnicode = unescapeUnicodeGeneral decPrintable
+unescapePrintable :: String -> String
+unescapePrintable = unescapeUnicodeGeneral decPrintable
+
+decPrintable :: EscapingPolicy
+decPrintable c s =
+    if isPrint c then AsChar c s else PassThrough
+
+printWithHex :: Show a => a -> IO ()
+printWithHex = putStrLn . showWithHex
+
+showWithHex :: Show a => a -> String
+showWithHex = withHex . show
+
+withHex :: String -> String
+withHex = unescapeUnicodeGeneral decToHex
+
+decToHex :: EscapingPolicy
+decToHex c s = AsCode (toHexCode c s) s
+
+printUnescapePrintableWithHex :: Show a => a -> IO ()
+printUnescapePrintableWithHex = putStrLn . showUnescapePrintableWithHex
+
+showUnescapePrintableWithHex :: Show a => a -> String
+showUnescapePrintableWithHex = unescapePrintableWithHex . show
+
+unescapePrintableWithHex :: String -> String
+unescapePrintableWithHex = unescapeUnicodeGeneral hexPrintable
+
+hexPrintable :: EscapingPolicy
+hexPrintable c s =
+    if isPrint c
+        then AsChar c s
+        else AsCode (toHexCode c s) s
 
 unescapeUnicodeGeneral :: EscapingPolicy -> String -> String
 unescapeUnicodeGeneral convert s =
@@ -46,34 +83,22 @@ unescapeUnicodeGeneral convert s =
                     selectOutput p = case p of
                         Nothing -> PassThrough
                         Just (c, s) -> convert c s
-          parseDec :: String -> Maybe (Char, String)
-          parseDec s
-              | tooManyDigits s = Nothing
-              | otherwise = listToMaybe (readDec s) >>= verifyCharInRange
-              where maxOrd :: Int
-                    maxOrd = ord (maxBound :: Char)
-                    tooManyDigits :: String -> Bool
-                    tooManyDigits = all isDigit . take (maxOrdDigits + 1)
-                        where maxOrdDigits = length . takeWhile (>0) .
-                                  iterate (`div` 10) $ maxOrd
-                    verifyCharInRange :: (Int, String) -> Maybe (Char, String)
-                    verifyCharInRange (i, s)
-                        | i > maxOrd        = Nothing
-                        | otherwise         = Just (c, s)
-                        where c = chr i
 
-decToHex :: EscapingPolicy
-decToHex c s = AsCode (toHexCode c s) s
-
-decPrintable :: EscapingPolicy
-decPrintable c s =
-    if isPrint c then AsChar c s else PassThrough
-
-hexPrintable :: EscapingPolicy
-hexPrintable c s =
-    if isPrint c
-        then AsChar c s
-        else AsCode (toHexCode c s) s
+parseDec :: String -> Maybe (Char, String)
+parseDec s
+    | tooManyDigits s = Nothing
+    | otherwise = listToMaybe (readDec s) >>= verifyCharInRange
+    where maxOrd :: Int
+          maxOrd = ord (maxBound :: Char)
+          tooManyDigits :: String -> Bool
+          tooManyDigits = all isDigit . take (maxOrdDigits + 1)
+              where maxOrdDigits = length . takeWhile (>0) .
+                        iterate (`div` 10) $ maxOrd
+          verifyCharInRange :: (Int, String) -> Maybe (Char, String)
+          verifyCharInRange (i, s)
+              | i > maxOrd        = Nothing
+              | otherwise         = Just (c, s)
+              where c = chr i
 
 toHexCode :: Char -> String -> String
 toHexCode c s =
@@ -86,4 +111,3 @@ unfoldString f s =
     concat . takeWhile (not . null) . map fst . tail . iterate go $ ("", s)
     where go :: (String, String) -> (String, String)
           go (_, s) = maybe ("", "") f . nonEmpty $ s
-
