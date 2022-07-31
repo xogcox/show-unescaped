@@ -1,5 +1,5 @@
 {-|
-Module      : Unescaped
+Module      : Text.Show.Unescaped
 Description : Convenience functions for changing how @show@ escapes characters
 Copyright   : (c) Gregory Cox
 License     : BSD-3
@@ -21,16 +21,9 @@ to set this as the print function GHCi uses.
 (Just \'÷\', \'±\')
 @
 
-== Compatibility with @Read@
-
-The output of all the functions should be compatible with @'Text.Read.read'@. That is,
-in the case of @'unescapePrintable'@, for example, for all @a@:
-
-prop> read (showUnescapePrintable a) == read (show a)
-prop> read (unescapePrintable a) == read a
 -}
 
-module Unescaped (
+module Text.Show.Unescaped (
       -- * Configuring GHCi's print function
       -- $printFunctions1
       -- $printFunctions2
@@ -75,7 +68,7 @@ import System.IO (putStrLn)
 
 -- $printFunctions2
 -- @
--- ghci -interactive-print=Unescaped.printUnescapePrintableWithHex Unescaped
+-- ghci -interactive-print=printUnescapePrintableWithHex Text.Show.Unescaped
 -- @
 
 -- $printFunctions3
@@ -83,8 +76,8 @@ import System.IO (putStrLn)
 
 -- $printFunctions4
 -- @
--- import Unescaped
--- :set -interactive-print=Unescaped.printUnescapePrintableWithHex
+-- import Text.Show.Unescaped
+-- :set -interactive-print=printUnescapePrintableWithHex
 -- @
 -- $printFunctions5
 -- There are the following printing functions:
@@ -96,7 +89,7 @@ import System.IO (putStrLn)
 
 -- $showFunctions2
 -- @
--- import Unescaped (showUnescapePrintableWithHex)
+-- import Text.Show.Unescaped (showUnescapePrintableWithHex)
 -- import Prelude hiding (show)
 -- import qualified Prelude as P (show)
 -- @

@@ -17,6 +17,11 @@ symbols, emoji or non-Latin scripts that you want to print verbatim?
 This module provides convenience functions for replacing `show` and `print`
 so that these characters are not escaped.
 
+## Comments?
+
+Please feel free to submit issues or pull requests with criticism,
+alternative proposals, suggestions for name changes or any other comments.
+
 ## Choosing which function to use
 
 You have three choices to make:
@@ -65,6 +70,16 @@ showUnescapePrintable = unescapePrintable . show
 printUnescapePrintable = putStrLn . unescapePrintable . show
 ```
 
+## Compatibility with `Read`
+
+The output of all the functions should be compatible with `read`. That is,
+in the case of `unescapePrintable`, for example, for all `a`:
+
+```haskell
+read (showUnescapePrintable a) == read (show a)
+read (unescapePrintable a) == read a
+```
+
 ## Replacing `print`
 
 Functions whose name starts with `print` are intended for use with the
@@ -72,14 +87,14 @@ Functions whose name starts with `print` are intended for use with the
 For example, you can use the following command-line option to set the print function:
 
 ```
-ghci -interactive-print=Unescaped.printUnescapePrintableWithHex Unescaped
+ghci -interactive-print=printUnescapePrintableWithHex Text.Show.Unescaped
 ```
 
 You can also set this option by adding the following line to your [`.ghci` configuration file](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/ghci.html#the-ghci-files):
 
 ```
-import Unescaped
-:set -interactive-print=Unescaped.printUnescapePrintableWithHex
+import Text.Show.Unescaped
+:set -interactive-print=printUnescapePrintableWithHex
 ```
 
 ## Replacing `show`
@@ -89,7 +104,7 @@ You can use them directly, or you can choose one to replace `show` with,
 for example by adding the following to the import section of a source file:
 
 ```haskell
-import Unescaped (showUnescapePrintableWithHex)
+import Text.Show.Unescaped (showUnescapePrintableWithHex)
 import Prelude hiding (show)
 import qualified Prelude as P (show)
 ```
