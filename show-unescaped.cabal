@@ -1,0 +1,39 @@
+cabal-version:      2.4
+
+name:               show-unescaped
+version:            0.0.1.0
+
+synopsis:
+    Convenience functions for changing how 'show' escapes characters
+
+-- description:
+
+homepage:           https:://github.com/xogcox/show-unescaped
+bug-reports:        https:://github.com/xogcox/show-unescaped/issues/new
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Gregory Cox
+maintainer:         gcox_gcox@proton.me
+-- copyright:
+category:           Text
+
+extra-source-files:
+    CHANGELOG.md
+    README.md
+
+library
+    exposed-modules:  Text.Show.Unescaped
+    -- other-modules:
+    -- other-extensions:
+    build-depends:    base >=4.0.0.0 && <4.17
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
+test-suite show-unescaped-test
+    default-language: Haskell2010
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Tests.hs
+    build-depends:    base ^>=4.15.1.0,
+                      QuickCheck ^>=2.14,
+                      show-unescaped ^>=0.0
